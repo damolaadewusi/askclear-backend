@@ -1,14 +1,12 @@
 import crypto from 'crypto';
-import mysql from 'mysql2/promise';
+import pkg from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const pool = mysql.createPool(process.env.DATABASE_URL || {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    connectionLimit: 10
+const { Pool } = pkg;
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
 export const paystackWebhook = async (req, res) => {
@@ -32,7 +30,7 @@ export const paystackWebhook = async (req, res) => {
 
              if(tokenDeposit > 0) {
                  await pool.query(
-                     'UPDATE users SET token_balance = token_balance + ? WHERE email = ?',
+                     'UPDATE users SET token_balance = token_balance + $1 WHERE email = $2',
                      [tokenDeposit, email]
                  );
                  console.log(`[AskClear Economics] ${tokenDeposit} Tokens successfully provisioned for ${email} under ref: ${ref}`);

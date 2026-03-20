@@ -19,6 +19,6 @@
     "imap-simple": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
     "mailparser": "^3.9.4",
-    "mysql2": "^3.20.0"
+    "pg": "^8.20.0"
   }
 }

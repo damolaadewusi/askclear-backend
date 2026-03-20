@@ -1,6 +1,10 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import pkg from 'pg';
+
 dotenv.config();
+const { Pool } = pkg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 const EXTRACT_PROMPT = `
 You are an executive email intelligence engine.
@@ -20,42 +24,50 @@ Analyze the following email.
 EMAIL CONTENT:
 `;
 
+export const processDeepSeekExtraction = async (plainTextBody) => {
+    const response = await axios.post(
+        'https://api.deepseek.com/chat/completions',
+        {
+            model: 'deepseek-chat',
+            messages: [
+                { role: 'system', content: 'You are an email parsing AI that outputs ONLY strict JSON representing actionable outcomes. Do not use markdown syntax. Do not output anything outside the JSON.' },
+                { role: 'user', content: EXTRACT_PROMPT + plainTextBody }
+            ],
+            temperature: 0.1,
+        },
+        {
+            headers: {
+                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+    
+    const aiOutput = response.data.choices[0].message.content;
+    const cleanedJson = aiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanedJson);
+};
+
 export const extractAsk = async (req, res) => {
     try {
         const { emailBody } = req.body;
-        
-        if (!emailBody) {
-            return res.status(400).json({ error: 'Missing emailBody payload.' });
-        }
+        if (!emailBody) return res.status(400).json({ error: 'Missing emailBody payload.' });
 
-        const response = await axios.post(
-            'https://api.deepseek.com/chat/completions',
-            {
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: 'You are an email parsing AI that outputs ONLY strict JSON representing actionable outcomes. Do not use markdown syntax.' },
-                    { role: 'user', content: EXTRACT_PROMPT + emailBody }
-                ],
-                temperature: 0.1,
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        const aiOutput = response.data.choices[0].message.content;
-        
-        // Defensive parsing for LLM markdown wrappers
-        const cleanedJson = aiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsedData = JSON.parse(cleanedJson);
-
+        const parsedData = await processDeepSeekExtraction(emailBody);
         res.status(200).json({ success: true, data: parsedData });
 
     } catch (error) {
         console.error('[AskClear AI] DeepSeek Inference Error:', error.message);
         res.status(500).json({ success: false, error: 'Inference Engine Failure' });
+    }
+};
+
+export const getUserAsks = async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM user_asks WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50', [req.user.id]);
+        res.status(200).json({ success: true, data: rows });
+    } catch (error) {
+        console.error('Fetch Asks Error:', error);
+        res.status(500).json({ success: false, error: 'Failed to retrieve AI data from database.' });
     }
 };

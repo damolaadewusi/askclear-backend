@@ -1,0 +1,24 @@
+{
+  "name": "askclear-server",
+  "version": "1.0.0",
+  "description": "AskClear AI Backend Gateway",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "googleapis": "^171.4.0",
+    "imap-simple": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mailparser": "^3.9.4",
+    "mysql2": "^3.20.0"
+  }
+}

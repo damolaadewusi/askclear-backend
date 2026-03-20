@@ -36,13 +36,8 @@ export const syncUniversalInbox = async (req, res) => {
         // Pull unread actionable emails only
         const searchCriteria = ['UNSEEN'];
         const fetchOptions = { bodies: ['HEADER', 'TEXT'], struct: true, markSeen: false };
-        let messages = await connection.search(searchCriteria, fetchOptions);
+        const messages = await connection.search(searchCriteria, fetchOptions);
         
-        // STRICT CLAMP: Only process the 5 most recent unread emails to prevent Render gateway timeouts (>100s)
-        if (messages.length > 5) {
-             messages = messages.slice(-5);
-        }
-
         let extractedEmails = [];
         let asksExtractedCount = 0;
 

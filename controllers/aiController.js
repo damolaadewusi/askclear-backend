@@ -71,3 +71,23 @@ export const getUserAsks = async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to retrieve AI data from database.' });
     }
 };
+
+export const archiveAsk = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('UPDATE user_asks SET status = $1 WHERE id = $2 AND user_id = $3', ['archived', id, req.user.id]);
+        res.status(200).json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Database Archive Failed' });
+    }
+};
+
+export const deleteAsk = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM user_asks WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+        res.status(200).json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Database Delete Failed' });
+    }
+};

@@ -52,6 +52,9 @@ export const submitTokenOrder = async (req, res) => {
             [req.user.id, req.user.email, package_name]
         );
 
+        // Emit response immediately to prevent frontend hanging
+        res.status(200).json({ success: true, message: 'Order submitted to Supabase successfully' });
+
         try {
             if (process.env.GMAIL_SMTP_USER && process.env.GMAIL_SMTP_PASS) {
                 const transporter = nodemailer.createTransport({
@@ -61,21 +64,23 @@ export const submitTokenOrder = async (req, res) => {
                         pass: process.env.GMAIL_SMTP_PASS
                     }
                 });
-                await transporter.sendMail({
+                // Background execution (No await)
+                transporter.sendMail({
                     from: `"AskClear Economics" <${process.env.GMAIL_SMTP_USER}>`,
                     to: 'damola.adewusi@gmail.com',
                     subject: `[AskClear Token Request] ${req.user.email}`,
-                    text: `URGENT: User ${req.user.email} (ID: ${req.user.id}) has requested a token restock.\n\nPackage Selected: ${package_name}\n\nPlease contact them to arrange payment and manually credit their token_balance via standard Supabase operations.`
+                    text: `URGENT: User ${req.user.email} (ID: ${req.user.id}) has requested a token restock.\n\nPackage Selected: ${package_name}\n\nPlease contact them to arrange payment and manually credit their token_balance.`
+                }).then(() => {
+                    console.log(`[AskClear Economics] Notified Admin of order from ${req.user.email}`);
+                }).catch(mailErr => {
+                    console.error('[AskClear Economics] SMTP Auth or Dispatch failed:', mailErr);
                 });
-                console.log(`[AskClear Economics] Notified Admin of order from ${req.user.email}`);
             } else {
                 console.warn('[AskClear Economics] Skipping Admin Email Alert: GMAIL_SMTP_USER env variable missing.');
             }
-        } catch (mailErr) {
-            console.error('[AskClear Economics] SMTP Auth or Dispatch failed:', mailErr);
+        } catch (mailSetupErr) {
+            console.error('[AskClear Economics] Mail Setup Error:', mailSetupErr);
         }
-
-        res.status(200).json({ success: true, message: 'Order submitted to Supabase successfully' });
     } catch (error) {
         console.error('Order Submit Error:', error);
         res.status(500).json({ success: false, error: 'Database connection failed' });

@@ -42,3 +42,17 @@ export const paystackWebhook = async (req, res) => {
         res.status(500).send('Internal Error');
     }
 };
+
+export const submitTokenOrder = async (req, res) => {
+    try {
+        const { package_name } = req.body;
+        await pool.query(
+            'INSERT INTO billing_requests (user_id, user_email, package_name) VALUES ($1, $2, $3)',
+            [req.user.id, req.user.email, package_name]
+        );
+        res.status(200).json({ success: true, message: 'Order submitted to Supabase successfully' });
+    } catch (error) {
+        console.error('Order Submit Error:', error);
+        res.status(500).json({ success: false, error: 'Database connection failed' });
+    }
+};

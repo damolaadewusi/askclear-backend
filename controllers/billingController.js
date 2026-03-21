@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import pkg from 'pg';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 dotenv.config();
 
 const { Pool } = pkg;
@@ -50,6 +51,30 @@ export const submitTokenOrder = async (req, res) => {
             'INSERT INTO billing_requests (user_id, user_email, package_name) VALUES ($1, $2, $3)',
             [req.user.id, req.user.email, package_name]
         );
+
+        try {
+            if (process.env.GMAIL_SMTP_USER && process.env.GMAIL_SMTP_PASS) {
+                const transporter = nodemailer.createTransport({
+                    service: 'gmail',
+                    auth: {
+                        user: process.env.GMAIL_SMTP_USER,
+                        pass: process.env.GMAIL_SMTP_PASS
+                    }
+                });
+                await transporter.sendMail({
+                    from: `"AskClear Economics" <${process.env.GMAIL_SMTP_USER}>`,
+                    to: 'damola.adewusi@gmail.com',
+                    subject: `[AskClear Token Request] ${req.user.email}`,
+                    text: `URGENT: User ${req.user.email} (ID: ${req.user.id}) has requested a token restock.\n\nPackage Selected: ${package_name}\n\nPlease contact them to arrange payment and manually credit their token_balance via standard Supabase operations.`
+                });
+                console.log(`[AskClear Economics] Notified Admin of order from ${req.user.email}`);
+            } else {
+                console.warn('[AskClear Economics] Skipping Admin Email Alert: GMAIL_SMTP_USER env variable missing.');
+            }
+        } catch (mailErr) {
+            console.error('[AskClear Economics] SMTP Auth or Dispatch failed:', mailErr);
+        }
+
         res.status(200).json({ success: true, message: 'Order submitted to Supabase successfully' });
     } catch (error) {
         console.error('Order Submit Error:', error);
